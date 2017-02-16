@@ -1,13 +1,13 @@
 /**
  * React Starter Kit (https://www.reactstarterkit.com/)
  *
- * Copyright © 2014-2016 Kriasoft, LLC. All rights reserved.
+ * Copyright © 2014-present Kriasoft, LLC. All rights reserved.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-import React, { PropTypes } from 'react';
+import React from 'react';
 import { defineMessages, FormattedMessage } from 'react-intl';
 import cx from 'classnames';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
@@ -42,31 +42,29 @@ const messages = defineMessages({
   },
 });
 
-function Navigation({ className }) {
-  return (
-    <div className={cx(s.root, className)} role="navigation">
-      <Link className={s.link} to="/about">
-        <FormattedMessage {...messages.about} />
-      </Link>
-      <Link className={s.link} to="/contact">
-        <FormattedMessage {...messages.contact} />
-      </Link>
-      <span className={s.spacer}> | </span>
-      <Link className={s.link} to="/login">
-        <FormattedMessage {...messages.login} />
-      </Link>
-      <span className={s.spacer}>
-        <FormattedMessage {...messages.or} />
-      </span>
-      <Link className={cx(s.link, s.highlight)} to="/register">
-        <FormattedMessage {...messages.signup} />
-      </Link>
-    </div>
-  );
+class Navigation extends React.Component {
+  render() {
+    return (
+      <div className={s.root} role="navigation">
+        <Link className={s.link} to="/about">
+          <FormattedMessage {...messages.about} />
+        </Link>
+        <Link className={s.link} to="/contact">
+          <FormattedMessage {...messages.contact} />
+        </Link>
+        <span className={s.spacer}> | </span>
+        <Link className={s.link} to="/login">
+          <FormattedMessage {...messages.login} />
+        </Link>
+        <span className={s.spacer}>
+          <FormattedMessage {...messages.or} />
+        </span>
+        <Link className={cx(s.link, s.highlight)} to="/register">
+          <FormattedMessage {...messages.signup} />
+        </Link>
+      </div>
+    );
+  }
 }
-
-Navigation.propTypes = {
-  className: PropTypes.string,
-};
 
 export default withStyles(s)(Navigation);

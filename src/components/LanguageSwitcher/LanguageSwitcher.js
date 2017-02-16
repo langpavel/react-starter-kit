@@ -6,20 +6,27 @@ import { setLocale } from '../../actions/intl';
 
 function LanguageSwitcher({ currentLocale, availableLocales, setLocale }) {
   const isSelected = locale => locale === currentLocale;
+  const localeDict = {
+    'en-US': 'English',
+    'cs-CZ': 'Česky',
+  };
+  const localeName = locale => localeDict[locale] || locale;
   return (
     <div>
       {availableLocales.map(locale => (
         <span key={locale}>
           {isSelected(locale) ? (
-            <span>{locale}</span>
+            <span>{localeName(locale)}</span>
           ) : (
+            // github.com/yannickcr/eslint-plugin-react/issues/945
+            // eslint-disable-next-line react/jsx-indent
             <a
               href={`?lang=${locale}`}
               onClick={(e) => {
                 setLocale({ locale });
                 e.preventDefault();
               }}
-            >{locale}</a>
+            >{localeName(locale)}</a>
           )}
           {' '}
         </span>
@@ -34,9 +41,13 @@ LanguageSwitcher.propTypes = {
   setLocale: PropTypes.func.isRequired,
 };
 
-export default connect(state => ({
+const mapState = state => ({
   availableLocales: state.runtime.availableLocales,
   currentLocale: state.intl.locale,
-}), {
+});
+
+const mapDispatch = {
   setLocale,
-})(LanguageSwitcher);
+};
+
+export default connect(mapState, mapDispatch)(LanguageSwitcher);

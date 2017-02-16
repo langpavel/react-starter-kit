@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ### [Unreleased][unreleased]
 
+- Split the `App` component into `App` setting context variables and `Layout` setting general look and feel of the app (BREAKING CHANGE)
+- Upgrade `history` npm module to v4.x, update `Link` component (BREAKING CHANGE)
+- Remove `core/createHistory.js` in favor of initializing a new history instance inside `server.js` and `client.js` (BREAKING CHANGE)
 - Remove Jade dependency in favor of React-based templates: `src/views/index.jade => src/components/Html`
   (BREAKING CHANGE) [#711](https://github.com/kriasoft/react-starter-kit/pull/711)
 - Update `isomorphic-style-loader` to `v1.0.0`, it adds comparability with ES2015+ decorators.
@@ -53,7 +56,7 @@ All notable changes to this project will be documented in this file.
 ### [v0.4.1]
 > 2015-10-04
 
-- Replace React Hot Loader (depricated) with React Transform
+- Replace React Hot Loader (deprecated) with React Transform
 - Replace `index.html` template with `Html` (shell) React component
 - Update the deployment script (`tools/deploy.js`), add Git-based deployment example
 - Update ESLint and JSCS settings to use AirBnb JavaScript style guide

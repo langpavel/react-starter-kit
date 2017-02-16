@@ -1,13 +1,12 @@
 /**
  * React Starter Kit (https://www.reactstarterkit.com/)
  *
- * Copyright © 2014-2016 Kriasoft, LLC. All rights reserved.
+ * Copyright © 2014-present Kriasoft, LLC. All rights reserved.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-import 'babel-polyfill';
 import path from 'path';
 import express from 'express';
 import cookieParser from 'cookie-parser';
@@ -20,7 +19,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/server';
 import UniversalRouter from 'universal-router';
 import PrettyError from 'pretty-error';
+import { IntlProvider } from 'react-intl';
+
 import './serverIntlPolyfill';
+import App from './components/App';
 import Html from './components/Html';
 import { ErrorPageWithoutStyle } from './routes/error/ErrorPage';
 import errorPageStyle from './routes/error/ErrorPage.css';
@@ -28,11 +30,9 @@ import passport from './core/passport';
 import models from './data/models';
 import schema from './data/schema';
 import routes from './routes';
-import createHistory from './core/createHistory';
-import assets from './assets'; // eslint-disable-line import/no-unresolved
+import assets from './assets.json'; // eslint-disable-line import/no-unresolved
 import configureStore from './store/configureStore';
 import { setRuntimeVariable } from './actions/runtime';
-import Provide from './components/Provide';
 import { setLocale } from './actions/intl';
 import { port, auth, locales } from './config';
 
@@ -75,8 +75,11 @@ app.use(expressJwt({
 }));
 app.use(passport.initialize());
 
+if (__DEV__) {
+  app.enable('trust proxy');
+}
 app.get('/login/facebook',
-  passport.authenticate('facebook', { scope: ['email', 'user_location'], session: false })
+  passport.authenticate('facebook', { scope: ['email', 'user_location'], session: false }),
 );
 app.get('/login/facebook/return',
   passport.authenticate('facebook', { failureRedirect: '/login', session: false }),
@@ -85,7 +88,7 @@ app.get('/login/facebook/return',
     const token = jwt.sign(req.user, auth.jwt.secret, { expiresIn });
     res.cookie('id_token', token, { maxAge: 1000 * expiresIn, httpOnly: true });
     res.redirect('/');
-  }
+  },
 );
 
 //
@@ -93,107 +96,85 @@ app.get('/login/facebook/return',
 // -----------------------------------------------------------------------------
 app.use('/graphql', expressGraphQL(req => ({
   schema,
-  graphiql: true,
+  graphiql: __DEV__,
   rootValue: { request: req },
-  pretty: process.env.NODE_ENV !== 'production',
+  pretty: __DEV__,
 })));
 
 //
 // Register server-side rendering middleware
 // -----------------------------------------------------------------------------
 app.get('*', async (req, res, next) => {
-  const history = createHistory(req.url);
-  // let currentLocation = history.getCurrentLocation();
-  let sent = false;
-  const removeHistoryListener = history.listen(location => {
-    const newUrl = `${location.pathname}${location.search}`;
-    if (req.originalUrl !== newUrl) {
-      // console.log(`R ${req.originalUrl} -> ${newUrl}`); // eslint-disable-line no-console
-      if (!sent) {
-        res.redirect(303, newUrl);
-        sent = true;
-        next();
-      } else {
-        console.error(`${req.path}: Already sent!`); // eslint-disable-line no-console
-      }
-    }
-  });
-
   try {
-    const store = configureStore({}, {
+    const store = configureStore({
+      user: req.user || null,
+    }, {
       cookie: req.headers.cookie,
-      history,
     });
 
     store.dispatch(setRuntimeVariable({
       name: 'initialNow',
       value: Date.now(),
     }));
-    let css = new Set();
-    let statusCode = 200;
-    const locale = req.language;
-    const data = {
-      lang: locale,
-      title: '',
-      description: '',
-      style: '',
-      script: assets.main.js,
-      children: '',
-    };
 
     store.dispatch(setRuntimeVariable({
       name: 'availableLocales',
       value: locales,
     }));
 
+    const locale = req.language;
     await store.dispatch(setLocale({
       locale,
     }));
 
-    await UniversalRouter.resolve(routes, {
+    const css = new Set();
+
+    // Global (context) variables that can be easily accessed from any React component
+    // https://facebook.github.io/react/docs/context.html
+    const context = {
+      // Enables critical path CSS rendering
+      // https://github.com/kriasoft/isomorphic-style-loader
+      insertCss: (...styles) => {
+        // eslint-disable-next-line no-underscore-dangle
+        styles.forEach(style => css.add(style._getCss()));
+      },
+      // Initialize a new Redux store
+      // http://redux.js.org/docs/basics/UsageWithReact.html
+      store,
+    };
+
+    const route = await UniversalRouter.resolve(routes, {
+      ...context,
       path: req.path,
       query: req.query,
-      context: {
-        store,
-        createHref: history.createHref,
-        insertCss: (...styles) => {
-          styles.forEach(style => css.add(style._getCss())); // eslint-disable-line no-underscore-dangle, max-len
-        },
-        setTitle: value => (data.title = value),
-        setMeta: (key, value) => (data[key] = value),
-      },
-      render(component, status = 200) {
-        css = new Set();
-        statusCode = status;
-
-        // Fire all componentWill... hooks
-        data.children = ReactDOM.renderToString(<Provide store={store}>{component}</Provide>);
-
-        // If you have async actions, wait for store when stabilizes here.
-        // This may be asynchronous loop if you have complicated structure.
-        // Then render again
-
-        // If store has no changes, you do not need render again!
-        // data.children = ReactDOM.renderToString(<Provide store={store}>{component}</Provide>);
-
-        // It is important to have rendered output and state in sync,
-        // otherwise React will write error to console when mounting on client
-        data.state = store.getState();
-
-        data.style = [...css].join('');
-        return true;
-      },
+      locale,
     });
 
-    if (!sent) {
-      const html = ReactDOM.renderToStaticMarkup(<Html {...data} />);
-      res.status(statusCode);
-      res.send(`<!doctype html>${html}`);
+    if (route.redirect) {
+      res.redirect(route.status || 302, route.redirect);
+      return;
     }
+
+    const data = { ...route };
+    data.children = ReactDOM.renderToString(<App context={context}>{route.component}</App>);
+    data.styles = [
+      { id: 'css', cssText: [...css].join('') },
+    ];
+    data.scripts = [
+      assets.vendor.js,
+      assets.client.js,
+    ];
+    if (assets[route.chunk]) {
+      data.scripts.push(assets[route.chunk].js);
+    }
+    data.state = context.store.getState();
+    data.lang = locale;
+
+    const html = ReactDOM.renderToStaticMarkup(<Html {...data} />);
+    res.status(route.status || 200);
+    res.send(`<!doctype html>${html}`);
   } catch (err) {
     next(err);
-  } finally {
-    removeHistoryListener();
   }
 });
 
@@ -206,17 +187,22 @@ pe.skipPackage('express');
 
 app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
   console.log(pe.render(err)); // eslint-disable-line no-console
-  const statusCode = err.status || 500;
+  const locale = req.language;
   const html = ReactDOM.renderToStaticMarkup(
     <Html
       title="Internal Server Error"
       description={err.message}
-      style={errorPageStyle._getCss()} // eslint-disable-line no-underscore-dangle
+      styles={[{ id: 'css', cssText: errorPageStyle._getCss() }]} // eslint-disable-line no-underscore-dangle
+      lang={locale}
     >
-      {ReactDOM.renderToString(<ErrorPageWithoutStyle error={err} />)}
-    </Html>
+      {ReactDOM.renderToString(
+        <IntlProvider locale={locale}>
+          <ErrorPageWithoutStyle error={err} />
+        </IntlProvider>,
+      )}
+    </Html>,
   );
-  res.status(statusCode);
+  res.status(err.status || 500);
   res.send(`<!doctype html>${html}`);
 });
 

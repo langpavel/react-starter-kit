@@ -7,11 +7,10 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-import path from 'path';
-import gaze from 'gaze';
+import chokidar from 'chokidar';
 import Promise from 'bluebird';
 import { transform } from 'babel-core';
-import fs from './lib/fs';
+import { readFile, writeFile, glob } from './lib/fs';
 import pkg from '../package.json';
 import { locales } from '../src/config';
 
@@ -22,7 +21,7 @@ let messages = {};
 const posixPath = fileName => fileName.replace(/\\/g, '/');
 
 async function writeMessages(fileName, msgs) {
-  await fs.writeFile(fileName, `${JSON.stringify(msgs, null, 2)}\n`);
+  await writeFile(fileName, `${JSON.stringify(msgs, null, 2)}\n`);
 }
 
 // merge messages to source files
@@ -30,7 +29,7 @@ async function mergeToFile(locale, toBuild) {
   const fileName = `src/messages/${locale}.json`;
   const originalMessages = {};
   try {
-    const oldFile = await fs.readFile(fileName);
+    const oldFile = await readFile(fileName);
 
     let oldJson;
     try {
@@ -39,7 +38,7 @@ async function mergeToFile(locale, toBuild) {
       throw new Error(`Error parsing messages JSON in file ${fileName}`);
     }
 
-    oldJson.forEach(message => {
+    oldJson.forEach((message) => {
       originalMessages[message.id] = message;
       delete originalMessages[message.id].files;
     });
@@ -49,7 +48,7 @@ async function mergeToFile(locale, toBuild) {
     }
   }
 
-  Object.keys(messages).forEach(id => {
+  Object.keys(messages).forEach((id) => {
     const newMsg = messages[id];
     originalMessages[id] = originalMessages[id] || { id };
     const msg = originalMessages[id];
@@ -81,8 +80,8 @@ async function mergeToFile(locale, toBuild) {
 // call everytime before updating file!
 function mergeMessages() {
   messages = {};
-  Object.keys(fileToMessages).forEach(fileName => {
-    fileToMessages[fileName].forEach(newMsg => {
+  Object.keys(fileToMessages).forEach((fileName) => {
+    fileToMessages[fileName].forEach((newMsg) => {
       const message = messages[newMsg.id] || {};
       messages[newMsg.id] = {
         description: newMsg.description || message.description,
@@ -97,7 +96,7 @@ function mergeMessages() {
 async function updateMessages(toBuild) {
   mergeMessages();
   await Promise.all(
-    ['_default', ...locales].map(locale => mergeToFile(locale, toBuild))
+    ['_default', ...locales].map(locale => mergeToFile(locale, toBuild)),
   );
 }
 
@@ -105,7 +104,7 @@ async function updateMessages(toBuild) {
  * Extract react-intl messages and write it to src/messages/_default.json
  * Also extends known localizations
  */
-async function extractMessages({ watch } = {}) {
+async function extractMessages() {
   const compare = (a, b) => {
     if (a === b) {
       return 0;
@@ -118,7 +117,7 @@ async function extractMessages({ watch } = {}) {
 
   const processFile = async (fileName) => {
     try {
-      const code = await fs.readFile(fileName);
+      const code = await readFile(fileName);
       const posixName = posixPath(fileName);
       const result = transform(code, {
         presets: pkg.babel.presets,
@@ -134,18 +133,15 @@ async function extractMessages({ watch } = {}) {
     }
   };
 
-  const files = await fs.glob(GLOB_PATTERN);
+  const files = await glob(GLOB_PATTERN);
 
   await Promise.all(files.map(processFile));
   await updateMessages(false);
 
-  if (watch) {
-    const watcher = await new Promise((resolve, reject) => {
-      gaze(GLOB_PATTERN, (err, val) => err ? reject(err) : resolve(val));
-    });
+  if (process.argv.includes('--watch')) {
+    const watcher = chokidar.watch(GLOB_PATTERN, { ignoreInitial: true });
     watcher.on('changed', async (file) => {
-      const relPath = file.substr(path.join(__dirname, '../').length);
-      await processFile(relPath);
+      await processFile(file);
       await updateMessages(true);
     });
   }
