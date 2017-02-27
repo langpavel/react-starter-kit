@@ -1,19 +1,21 @@
 import fetch from '../core/fetch';
 
-function createGraphqlRequest(fetchKnowingCookie) {
-  return async function graphqlRequest(query, variables) {
-    const fetchConfig = {
-      method: 'post',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query, variables }),
-      credentials: 'include',
-    };
-    const resp = await fetchKnowingCookie('/graphql', fetchConfig);
-    if (resp.status !== 200) throw new Error(resp.statusText);
-    return resp.json();
+const getGraphQLStringMessage = queryString => `Plain GraphQL string found.
+You should precompile GraphQL queries by require them from *.graphql file.
+Query: ${queryString.trimLeft().substring(0, 60)}`;
+
+function createGraphqlRequest(apolloClient) {
+  return async function graphqlRequest(queryOrString, variables) {
+    let query = queryOrString;
+    if (typeof queryOrString === 'string') {
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.trace(getGraphQLStringMessage(queryOrString));
+      }
+      const gql = await require.ensure(['graphql-tag'], require => require('graphql-tag'), 'graphql-tag');
+      query = gql([queryOrString]);
+    }
+    return apolloClient.query({ query, variables });
   };
 }
 
@@ -41,11 +43,12 @@ function createFetchKnowingCookie({ cookie }) {
 
 export default function createHelpers(config) {
   const fetchKnowingCookie = createFetchKnowingCookie(config);
-  const graphqlRequest = createGraphqlRequest(fetchKnowingCookie);
+  const graphqlRequest = createGraphqlRequest(config.apolloClient);
 
   return {
+    apolloClient: config.apolloClient,
+    history: config.history,
     fetch: fetchKnowingCookie,
     graphqlRequest,
-    history: config.history,
   };
 }
