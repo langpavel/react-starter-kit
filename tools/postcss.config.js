@@ -7,16 +7,17 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
+/* eslint-disable global-require */
+
+const pkg = require('../package.json');
+
 module.exports = () => ({
   // The list of plugins for PostCSS
   // https://github.com/postcss/postcss
   plugins: [
     // Transfer @import rule by inlining content, e.g. @import 'normalize.css'
-    // https://github.com/jonathantneal/postcss-partial-import
-    require('postcss-partial-import')(),
-    // Allow you to fix url() according to postcss to and/or from options
-    // https://github.com/postcss/postcss-url
-    require('postcss-url')(),
+    // https://github.com/postcss/postcss-import
+    require('postcss-import')(),
     // W3C variables, e.g. :root { --color: red; } div { background: var(--color); }
     // https://github.com/postcss/postcss-custom-properties
     require('postcss-custom-properties')(),
@@ -58,6 +59,9 @@ module.exports = () => ({
     require('postcss-flexbugs-fixes')(),
     // Add vendor prefixes to CSS rules using values from caniuse.com
     // https://github.com/postcss/autoprefixer
-    require('autoprefixer')(/* package.json/browserslist */),
+    require('autoprefixer')({
+      browsers: pkg.browserslist,
+      flexbox: 'no-2009',
+    }),
   ],
 });

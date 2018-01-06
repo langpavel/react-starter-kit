@@ -7,7 +7,8 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-import React, { PropTypes } from 'react';
+import React from 'react';
+import PropTypes from 'prop-types';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import s from './ErrorPage.css';
 
@@ -17,17 +18,19 @@ class ErrorPage extends React.Component {
       name: PropTypes.string.isRequired,
       message: PropTypes.string.isRequired,
       stack: PropTypes.string.isRequired,
-    }).isRequired,
+    }),
+  };
+
+  static defaultProps = {
+    error: null,
   };
 
   render() {
-    if (__DEV__) {
-      const { error } = this.props;
+    if (__DEV__ && this.props.error) {
       return (
         <div>
-          <h1>{error.name}</h1>
-          <p>{error.message}</p>
-          <pre>{error.stack}</pre>
+          <h1>{this.props.error.name}</h1>
+          <pre>{this.props.error.stack}</pre>
         </div>
       );
     }

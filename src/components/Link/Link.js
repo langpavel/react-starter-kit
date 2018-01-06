@@ -7,8 +7,9 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-import React, { PropTypes } from 'react';
-import history from '../../core/history';
+import React from 'react';
+import PropTypes from 'prop-types';
+import history from '../../history';
 
 function isLeftClickEvent(event) {
   return event.button === 0;
@@ -29,7 +30,7 @@ class Link extends React.Component {
     onClick: null,
   };
 
-  handleClick = (event) => {
+  handleClick = event => {
     if (this.props.onClick) {
       this.props.onClick(event);
     }
@@ -48,7 +49,11 @@ class Link extends React.Component {
 
   render() {
     const { to, children, ...props } = this.props;
-    return <a href={to} {...props} onClick={this.handleClick}>{children}</a>;
+    return (
+      <a href={to} {...props} onClick={this.handleClick}>
+        {children}
+      </a>
+    );
   }
 }
 

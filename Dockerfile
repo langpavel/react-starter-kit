@@ -1,11 +1,18 @@
-FROM node:6.9.5-alpine
+FROM node:8.6.0-alpine
 
-# Copy application files
-COPY ./build /usr/src/app
+# Set a working directory
 WORKDIR /usr/src/app
 
-# Install Yarn and Node.js dependencies
-RUN npm install yarn --global --no-progress --silent --depth 0 && \
-    yarn install --production --no-progress
+COPY ./build/package.json .
+COPY ./build/yarn.lock .
+
+# Install Node.js dependencies
+RUN yarn install --production --no-progress
+
+# Copy application files
+COPY ./build .
+
+# Run the container under "node" user by default
+USER node
 
 CMD [ "node", "server.js" ]

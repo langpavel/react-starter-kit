@@ -1,14 +1,17 @@
 /* eslint-disable no-shadow */
 
-import React, { PropTypes } from 'react';
+import React from 'react';
+import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import { setLocale } from '../../actions/intl';
 
 function LanguageSwitcher({ currentLocale, availableLocales, setLocale }) {
   const isSelected = locale => locale === currentLocale;
   const localeDict = {
+    /* @intl-code-template '${lang}-${COUNTRY}': '${Name}', */
     'en-US': 'English',
     'cs-CZ': 'Česky',
+    /* @intl-code-template-end */
   };
   const localeName = locale => localeDict[locale] || locale;
   return (
@@ -22,13 +25,14 @@ function LanguageSwitcher({ currentLocale, availableLocales, setLocale }) {
             // eslint-disable-next-line react/jsx-indent
             <a
               href={`?lang=${locale}`}
-              onClick={(e) => {
+              onClick={e => {
                 setLocale({ locale });
                 e.preventDefault();
               }}
-            >{localeName(locale)}</a>
-          )}
-          {' '}
+            >
+              {localeName(locale)}
+            </a>
+          )}{' '}
         </span>
       ))}
     </div>

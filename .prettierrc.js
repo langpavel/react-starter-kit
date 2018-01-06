@@ -7,9 +7,10 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-import 'whatwg-fetch';
-
-export default self.fetch.bind(self);
-export const Headers = self.Headers;
-export const Request = self.Request;
-export const Response = self.Response;
+// Prettier configuration
+// https://prettier.io/docs/en/configuration.html
+module.exports = {
+  printWidth: 80,
+  singleQuote: true,
+  trailingComma: 'all',
+};
